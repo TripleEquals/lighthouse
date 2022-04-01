@@ -33,6 +33,9 @@ const str_ = i18n.createMessageInstanceIdFn(__filename, UIStrings);
 
 const IGNORE_THRESHOLD_IN_BYTES = 4096;
 
+// Ignore up to 12KB of waste if an effort was made with breakpoints.
+const IGNORE_THRESHOLD_IN_BYTES_BREAKPOINTS_PRESENT = 12288;
+
 class UsesResponsiveImages extends ByteEfficiencyAudit {
   /**
    * @return {LH.Audit.Meta}
@@ -152,10 +155,21 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
       if (!existing || existing.wastedBytes > processed.wastedBytes) {
         resultsMap.set(processed.url, processed);
       }
+
+      
+      if(image.srcset) {
+        console.log(``);
+      }
     }
 
+    // Ignore images that waste only a small amount
     const items = Array.from(resultsMap.values())
         .filter(item => item.wastedBytes > IGNORE_THRESHOLD_IN_BYTES);
+
+    // If there is a srcset, or a picture (maybe both? also ignore)
+    
+    // if picture, then check if there is a srcset, or maybe multiple sources?
+    // if not a picture, also check srcset
 
     /** @type {LH.Audit.Details.Opportunity['headings']} */
     const headings = [
