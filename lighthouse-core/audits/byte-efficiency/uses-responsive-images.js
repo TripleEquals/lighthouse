@@ -115,6 +115,19 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
     };
   }
 
+
+  /**
+   * @param {LH.Artifacts.ImageElement} image
+   * @return {number};
+   */
+  static computeAllowableWaste(image) {
+    if(image.srcset || image.isPicture) {
+      return IGNORE_THRESHOLD_IN_BYTES_BREAKPOINTS_PRESENT;
+    }
+    
+    return IGNORE_THRESHOLD_IN_BYTES;
+  }
+
   /**
    * @param {LH.Artifacts} artifacts
    * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
@@ -129,6 +142,8 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
     const ViewportDimensions = artifacts.ViewportDimensions;
     /** @type {Map<string, LH.Audit.ByteEfficiencyItem>} */
     const resultsMap = new Map();
+    /** @type {Map<string, number>} */
+    const allowableWasteMap = new Map();
     for (const image of images) {
       // Give SVG a free pass because creating a "responsive" SVG is of questionable value.
       // Ignore CSS images because it's difficult to determine what is a spritesheet,
@@ -150,21 +165,29 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
         );
       if (!processed) continue;
 
+      // Set the allowed amount of waste per url
+      const existingAllowableWaste = allowableWasteMap.get(processed.url);
+      const computedAllowableWaste = this.computeAllowableWaste(image);
+      if (!existingAllowableWaste || existingAllowableWaste > computedAllowableWaste) {
+        allowableWasteMap.set(processed.url, computedAllowableWaste);
+      }
+
       // Don't warn about an image that was later used appropriately
       const existing = resultsMap.get(processed.url);
       if (!existing || existing.wastedBytes > processed.wastedBytes) {
         resultsMap.set(processed.url, processed);
       }
-
-      
-      if(image.srcset) {
-        console.log(``);
-      }
     }
 
-    // Ignore images that waste only a small amount
+    // Ignore images that waste less than the allowed amount
     const items = Array.from(resultsMap.values())
-        .filter(item => item.wastedBytes > IGNORE_THRESHOLD_IN_BYTES);
+        .filter(item =>  {
+          let allowableWaste = allowableWasteMap.get(item.url);
+          if (!allowableWaste) {
+            allowableWaste = IGNORE_THRESHOLD_IN_BYTES;
+          }
+          return item.wastedBytes > allowableWaste;
+        });
 
     // If there is a srcset, or a picture (maybe both? also ignore)
     
