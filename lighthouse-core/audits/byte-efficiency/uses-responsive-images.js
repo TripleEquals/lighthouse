@@ -188,12 +188,7 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
           }
           return item.wastedBytes > allowableWaste;
         });
-
-    // If there is a srcset, or a picture (maybe both? also ignore)
-    
-    // if picture, then check if there is a srcset, or maybe multiple sources?
-    // if not a picture, also check srcset
-
+        
     /** @type {LH.Audit.Details.Opportunity['headings']} */
     const headings = [
       {key: 'node', valueType: 'node', label: ''},
