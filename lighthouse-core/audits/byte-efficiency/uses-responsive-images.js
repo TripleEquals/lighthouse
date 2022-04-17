@@ -24,9 +24,9 @@ const UIStrings = {
   title: 'Properly size images',
   /** Description of a Lighthouse audit that tells the user *why* they need to serve appropriately sized images. This is displayed after a user expands the section to see more. No character length limits. 'Learn More' becomes link text to additional documentation. */
   description:
-   'Serve images that are appropriately-sized to save cellular data ' +
-   'and improve load time. ' +
-   '[Learn more](https://web.dev/uses-responsive-images/).',
+  'Serve images that are appropriately-sized to save cellular data ' +
+  'and improve load time. ' +
+  '[Learn more](https://web.dev/uses-responsive-images/).',
 };
 
 const str_ = i18n.createMessageInstanceIdFn(__filename, UIStrings);
@@ -38,8 +38,8 @@ const IGNORE_THRESHOLD_IN_BYTES_BREAKPOINTS_PRESENT = 12288;
 
 class UsesResponsiveImages extends ByteEfficiencyAudit {
   /**
-    * @return {LH.Audit.Meta}
-    */
+   * @return {LH.Audit.Meta}
+   */
   static get meta() {
     return {
       id: 'uses-responsive-images',
@@ -47,15 +47,15 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
       description: str_(UIStrings.description),
       scoreDisplayMode: ByteEfficiencyAudit.SCORING_MODES.NUMERIC,
       requiredArtifacts: ['ImageElements', 'ViewportDimensions', 'GatherContext',
-        'devtoolsLogs', 'traces'],
+        'devtoolsLogs', 'traces', 'URL'],
     };
   }
 
   /**
-    * @param {LH.Artifacts.ImageElement & {naturalWidth: number, naturalHeight: number}} image
-    * @param {LH.Artifacts.ViewportDimensions} ViewportDimensions
-    * @return {{width: number, height: number}};
-    */
+   * @param {LH.Artifacts.ImageElement & {naturalWidth: number, naturalHeight: number}} image
+   * @param {LH.Artifacts.ViewportDimensions} ViewportDimensions
+   * @return {{width: number, height: number}};
+   */
   static getDisplayedDimensions(image, ViewportDimensions) {
     if (image.displayedWidth && image.displayedHeight) {
       return {
@@ -85,11 +85,11 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
   }
 
   /**
-    * @param {LH.Artifacts.ImageElement & {naturalWidth: number, naturalHeight: number}} image
-    * @param {LH.Artifacts.ViewportDimensions} ViewportDimensions
-    * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
-    * @return {null|LH.Audit.ByteEfficiencyItem};
-    */
+   * @param {LH.Artifacts.ImageElement & {naturalWidth: number, naturalHeight: number}} image
+   * @param {LH.Artifacts.ViewportDimensions} ViewportDimensions
+   * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
+   * @return {null|LH.Audit.ByteEfficiencyItem};
+   */
   static computeWaste(image, ViewportDimensions, networkRecords) {
     const networkRecord = networkRecords.find(record => record.url === image.src);
     // Nothing can be done without network info, ignore images without resource size information.
@@ -117,9 +117,9 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
 
 
   /**
-    * @param {LH.Artifacts.ImageElement} image
-    * @return {number};
-    */
+   * @param {LH.Artifacts.ImageElement} image
+   * @return {number};
+   */
   static computeAllowableWaste(image) {
     if (image.srcset || image.isPicture) {
       return IGNORE_THRESHOLD_IN_BYTES_BREAKPOINTS_PRESENT;
@@ -129,11 +129,11 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
   }
 
   /**
-    * @param {LH.Artifacts} artifacts
-    * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
-    * @param {LH.Audit.Context} context
-    * @return {Promise<ByteEfficiencyAudit.ByteEfficiencyProduct>}
-    */
+   * @param {LH.Artifacts} artifacts
+   * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
+   * @param {LH.Audit.Context} context
+   * @return {Promise<ByteEfficiencyAudit.ByteEfficiencyProduct>}
+   */
   static async audit_(artifacts, networkRecords, context) {
     const images = await ImageRecords.request({
       ImageElements: artifacts.ImageElements,
@@ -142,8 +142,6 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
     const ViewportDimensions = artifacts.ViewportDimensions;
     /** @type {Map<string, LH.Audit.ByteEfficiencyItem>} */
     const resultsMap = new Map();
-    /** @type {Map<string, number>} */
-    const allowableWasteMap = new Map();
     for (const image of images) {
       // Give SVG a free pass because creating a "responsive" SVG is of questionable value.
       // Ignore CSS images because it's difficult to determine what is a spritesheet,
@@ -159,35 +157,23 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
       // If naturalHeight or naturalWidth are falsy, information is not valid, skip.
       if (!naturalWidth || !naturalHeight) continue;
       const processed =
-         UsesResponsiveImages.computeWaste(
-           {...image, naturalHeight, naturalWidth},
-           ViewportDimensions, networkRecords
-         );
+        UsesResponsiveImages.computeWaste(
+          {...image, naturalHeight, naturalWidth},
+          ViewportDimensions, networkRecords
+        );
       if (!processed) continue;
 
-      // Set the allowed amount of waste per url
-      const existingAllowableWaste = allowableWasteMap.get(processed.url);
-      const computedAllowableWaste = this.computeAllowableWaste(image);
-      if (!existingAllowableWaste || existingAllowableWaste > computedAllowableWaste) {
-        allowableWasteMap.set(processed.url, computedAllowableWaste);
-      }
+      // Verify the image wastes more than the minimum
+      const exceedsAllowableWaste = processed.wastedBytes > this.computeAllowableWaste(image);
 
-      // Don't warn about an image that was later used appropriately
+      // Don't warn about an image that was later used appropriately, or wastes a trivial amount of data
       const existing = resultsMap.get(processed.url);
-      if (!existing || existing.wastedBytes > processed.wastedBytes) {
+      if (exceedsAllowableWaste && (!existing || existing.wastedBytes > processed.wastedBytes)) {
         resultsMap.set(processed.url, processed);
       }
     }
 
-    // Ignore images that waste less than the allowed amount
-    const items = Array.from(resultsMap.values())
-         .filter(item => {
-           let allowableWaste = allowableWasteMap.get(item.url);
-           if (!allowableWaste) {
-             allowableWaste = IGNORE_THRESHOLD_IN_BYTES;
-           }
-           return item.wastedBytes > allowableWaste;
-         });
+    const items = Array.from(resultsMap.values());
 
     /** @type {LH.Audit.Details.Opportunity['headings']} */
     const headings = [
