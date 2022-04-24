@@ -120,11 +120,10 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
    * @param {LH.Artifacts.ImageElement} image
    * @return {number};
    */
-  static computeAllowableWaste(image) {
+  static determineAllowableWaste(image) {
     if (image.srcset || image.isPicture) {
       return IGNORE_THRESHOLD_IN_BYTES_BREAKPOINTS_PRESENT;
     }
-
     return IGNORE_THRESHOLD_IN_BYTES;
   }
 
@@ -164,8 +163,7 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
       if (!processed) continue;
 
       // Verify the image wastes more than the minimum
-      const exceedsAllowableWaste = processed.wastedBytes > this.computeAllowableWaste(image);
-
+      const exceedsAllowableWaste = processed.wastedBytes > this.determineAllowableWaste(image);
       // Don't warn about an image that was later used appropriately, or wastes a trivial amount of data
       const existing = resultsMap.get(processed.url);
       if (exceedsAllowableWaste && (!existing || existing.wastedBytes > processed.wastedBytes)) {
