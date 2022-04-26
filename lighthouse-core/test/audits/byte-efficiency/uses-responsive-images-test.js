@@ -192,7 +192,9 @@ describe('Page uses responsive images', () => {
       {computedCache: new Map()}
     );
 
-    assert.equal(auditResult.items.length, 3);
+    assert.equal(auditResult.items[0].url, 'https://google.com/logo.png');
+    assert.equal(auditResult.items[1].url, 'https://google.com/logo3a.png');
+    assert.equal(auditResult.items[2].url, 'https://google.com/logo2.png');
   });
 
   it('ignores vectors', async () => {
