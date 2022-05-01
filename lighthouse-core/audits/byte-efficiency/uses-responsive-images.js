@@ -141,6 +141,8 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
     const ViewportDimensions = artifacts.ViewportDimensions;
     /** @type {Map<string, LH.Audit.ByteEfficiencyItem>} */
     const resultsMap = new Map();
+    /** @type {Array<string>} */
+    const passedImageList = [];
     for (const image of images) {
       // Give SVG a free pass because creating a "responsive" SVG is of questionable value.
       // Ignore CSS images because it's difficult to determine what is a spritesheet,
@@ -162,12 +164,19 @@ class UsesResponsiveImages extends ByteEfficiencyAudit {
         );
       if (!processed) continue;
 
-      // Verify the image wastes more than the minimum
+      // Verify the image wastes more than the minimum.
       const exceedsAllowableWaste = processed.wastedBytes > this.determineAllowableWaste(image);
-      // Don't warn about an image that was later used appropriately, or wastes a trivial amount of data
+
       const existing = resultsMap.get(processed.url);
-      if (exceedsAllowableWaste && (!existing || existing.wastedBytes > processed.wastedBytes)) {
-        resultsMap.set(processed.url, processed);
+      // Don't warn about an image that was later used appropriately, or wastes a trivial amount of data.
+      if (exceedsAllowableWaste && !passedImageList.includes(processed.url)) {
+        if ((!existing || existing.wastedBytes > processed.wastedBytes)) {
+          resultsMap.set(processed.url, processed);
+        }
+      } else {
+        // Ensure this url passes for future tests.
+        resultsMap.delete(processed.url);
+        passedImageList.push(processed.url);
       }
     }
 
