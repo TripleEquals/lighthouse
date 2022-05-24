@@ -303,7 +303,7 @@ const expectations = {
       // Check that images aren't TOO BIG.
       'uses-responsive-images': {
         details: {
-          overallSavingsBytes: '119000 +/- 5000',
+          overallSavingsBytes: '113000 +/- 5000',
           items: [
             {wastedPercent: '56 +/- 5', url: /lighthouse-1024x680.jpg/},
             {wastedPercent: '78 +/- 5', url: /lighthouse-2048x1356.webp\?size0/},
