@@ -64,7 +64,7 @@ async function legacyNavigation(url, flags = {}, configJSON, userConnection) {
   flags.logLevel = flags.logLevel || 'error';
   log.setLevel(flags.logLevel);
 
-  const config = generateConfig(configJSON, flags);
+  const config = await generateConfig(configJSON, flags);
   const computedCache = new Map();
   const options = {config, computedCache};
   const connection = userConnection || new ChromeProtocol(flags.port, flags.hostname);
@@ -83,10 +83,10 @@ async function legacyNavigation(url, flags = {}, configJSON, userConnection) {
  *   not present, the default config is used.
  * @param {LH.Flags=} flags Optional settings for the Lighthouse run. If present,
  *   they will override any settings in the config.
- * @return {Config}
+ * @return {Promise<Config>}
  */
 function generateConfig(configJson, flags) {
-  return new Config(configJson, flags);
+  return Config.fromJson(configJson, flags);
 }
 
 lighthouse.legacyNavigation = legacyNavigation;
@@ -94,7 +94,7 @@ lighthouse.generateConfig = generateConfig;
 lighthouse.getAuditList = Runner.getAuditList;
 lighthouse.traceCategories = require('./gather/driver.js').traceCategories;
 lighthouse.Audit = require('./audits/audit.js');
-lighthouse.Gatherer = require('./gather/gatherers/gatherer.js');
+lighthouse.Gatherer = require('./fraggle-rock/gather/base-gatherer.js');
 
 // Explicit type reference (hidden by makeComputedArtifact) for d.ts export.
 // TODO(esmodules): should be a workaround for module.export and can be removed when in esm.
